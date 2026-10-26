@@ -1,32 +1,63 @@
 package main
 
-import "dagger/goauth/internal/dagger"
+import (
+	"context"
+	"strings"
+
+	"dagger/goauth/internal/dagger"
+)
 
 type Goauth struct {
 	Token     *dagger.Secret
 	Image     string
 	Goprivate string
+	// +private
+	GoMod *dagger.File
 }
 
 func New(
+	ws *dagger.Workspace,
+	// GitHub PAT with read access to private Go modules
 	// +optional
 	token *dagger.Secret,
+	// Base Go container image (defaults to golang:<version> from go.mod)
 	// +optional
-	// +default="golang:1.27.3"
 	image string,
+	// GOPRIVATE glob pattern (e.g. "github.com/org/*")
 	// +optional
-	// +default="github.com/ninesl/*"
 	goprivate string,
 ) *Goauth {
 	return &Goauth{
 		Token:     token,
 		Image:     image,
 		Goprivate: goprivate,
+		GoMod:     ws.File("/go.mod"),
 	}
 }
 
-func (m *Goauth) Base() *dagger.Container {
-	ctr := dag.Container().From(m.Image).WithEnvVariable("GOPRIVATE", m.Goprivate)
+// Base returns a Go toolchain container authenticated for private GitHub modules.
+func (m *Goauth) Base(ctx context.Context) *dagger.Container {
+	image := m.Image
+	if image == "" {
+		ver := "1.27"
+		if m.GoMod != nil {
+			if data, err := m.GoMod.Contents(ctx); err == nil {
+				for _, line := range strings.Split(data, "\n") {
+					fields := strings.Fields(strings.TrimSpace(line))
+					if len(fields) >= 2 && fields[0] == "go" && fields[1] != "" {
+						ver = fields[1]
+						break
+					}
+				}
+			}
+		}
+		image = "golang:" + ver
+	}
+
+	ctr := dag.Container().From(image)
+	if m.Goprivate != "" {
+		ctr = ctr.WithEnvVariable("GOPRIVATE", m.Goprivate)
+	}
 	if m.Token == nil {
 		return ctr
 	}

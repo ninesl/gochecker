@@ -30,6 +30,7 @@ func (r *Goauth) WithGraphQLQuery(q *querybuilder.Selection) *Goauth {
 	}
 }
 
+// Base returns a Go toolchain container authenticated for private GitHub modules.
 func (r *Goauth) Base() *Container {
 	q := r.query.Select("base")
 
@@ -129,16 +130,16 @@ func (r *Goauth) Token() *Secret {
 
 // GoauthOpts contains options for Query.Goauth
 type GoauthOpts struct {
+	// GitHub PAT with read access to private Go modules
 	Token *Secret
-
-	// Default: "golang:1.27.3"
+	// Base Go container image (defaults to golang:<version> from go.mod)
 	Image string
-
-	// Default: "github.com/ninesl/*"
+	// GOPRIVATE glob pattern (e.g. "github.com/org/*")
 	Goprivate string
 }
 
-func (r *Query) Goauth(opts ...GoauthOpts) *Goauth { // goauth (../../../../:0:0)
+func (r *Query) Goauth(ws *Workspace, opts ...GoauthOpts) *Goauth { // goauth (../../../../:0:0)
+	assertNotNil("ws", ws)
 	q := r.query.Select("goauth")
 	for i := len(opts) - 1; i >= 0; i-- {
 		// `token` optional argument
@@ -154,6 +155,7 @@ func (r *Query) Goauth(opts ...GoauthOpts) *Goauth { // goauth (../../../../:0:0
 			q = q.Arg("goprivate", opts[i].Goprivate)
 		}
 	}
+	q = q.Arg("ws", ws)
 
 	return &Goauth{
 		query:     q,

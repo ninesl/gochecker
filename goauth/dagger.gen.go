@@ -64,10 +64,12 @@ func (r Goauth) MarshalJSON() ([]byte, error) {
 		Token     *dagger.Secret
 		Image     string
 		Goprivate string
+		GoMod     *dagger.File
 	}
 	concrete.Token = r.Token
 	concrete.Image = r.Image
 	concrete.Goprivate = r.Goprivate
+	concrete.GoMod = r.GoMod
 	return json.Marshal(&concrete)
 }
 
@@ -76,6 +78,7 @@ func (r *Goauth) UnmarshalJSON(bs []byte) error {
 		Token     *dagger.Secret
 		Image     string
 		Goprivate string
+		GoMod     *dagger.File
 	}
 	err := json.Unmarshal(bs, &concrete)
 	if err != nil {
@@ -84,6 +87,7 @@ func (r *Goauth) UnmarshalJSON(bs []byte) error {
 	r.Token = concrete.Token
 	r.Image = concrete.Image
 	r.Goprivate = concrete.Goprivate
+	r.GoMod = concrete.GoMod
 	return nil
 }
 
@@ -212,12 +216,19 @@ func invoke(ctx context.Context, parentJSON []byte, parentName string, fnName st
 			if err != nil {
 				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
 			}
-			return (*Goauth).Base(&parent), nil
+			return (*Goauth).Base(&parent, ctx), nil
 		case "":
 			var parent Goauth
 			err = json.Unmarshal(parentJSON, &parent)
 			if err != nil {
 				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
+			}
+			var ws *dagger.Workspace
+			if inputArgs["ws"] != nil {
+				err = json.Unmarshal([]byte(inputArgs["ws"]), &ws)
+				if err != nil {
+					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg ws", err))
+				}
 			}
 			var token *dagger.Secret
 			if inputArgs["token"] != nil {
@@ -240,28 +251,30 @@ func invoke(ctx context.Context, parentJSON []byte, parentName string, fnName st
 					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg goprivate", err))
 				}
 			}
-			return New(token, image, goprivate), nil
+			return New(ws, token, image, goprivate), nil
 		default:
 			return nil, fmt.Errorf("unknown function %s", fnName)
 		}
 	case "":
 		return dag.Module().
 			WithObject(
-				dag.TypeDef().WithObject("Goauth", dagger.TypeDefWithObjectOpts{SourceMap: dag.SourceMap("main.go", 5, 6)}).
+				dag.TypeDef().WithObject("Goauth", dagger.TypeDefWithObjectOpts{SourceMap: dag.SourceMap("main.go", 10, 6)}).
 					WithFunction(
 						dag.Function("Base",
 							dag.TypeDef().WithObject("Container")).
-							WithSourceMap(dag.SourceMap("main.go", 28, 1))).
-					WithField("Token", dag.TypeDef().WithObject("Secret"), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 6, 2)}).
-					WithField("Image", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 7, 2)}).
-					WithField("Goprivate", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 8, 2)}).
+							WithDescription("Base returns a Go toolchain container authenticated for private GitHub modules.").
+							WithSourceMap(dag.SourceMap("main.go", 39, 1))).
+					WithField("Token", dag.TypeDef().WithObject("Secret"), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 11, 2)}).
+					WithField("Image", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 12, 2)}).
+					WithField("Goprivate", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 13, 2)}).
 					WithConstructor(
 						dag.Function("New",
 							dag.TypeDef().WithObject("Goauth")).
-							WithSourceMap(dag.SourceMap("main.go", 11, 1)).
-							WithArg("token", dag.TypeDef().WithObject("Secret").WithOptional(true), dagger.FunctionWithArgOpts{SourceMap: dag.SourceMap("main.go", 13, 2)}).
-							WithArg("image", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{SourceMap: dag.SourceMap("main.go", 16, 2), DefaultValue: dagger.JSON("\"golang:1.27.3\"")}).
-							WithArg("goprivate", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{SourceMap: dag.SourceMap("main.go", 19, 2), DefaultValue: dagger.JSON("\"github.com/ninesl/*\"")}))), nil
+							WithSourceMap(dag.SourceMap("main.go", 18, 1)).
+							WithArg("ws", dag.TypeDef().WithObject("Workspace"), dagger.FunctionWithArgOpts{SourceMap: dag.SourceMap("main.go", 19, 2)}).
+							WithArg("token", dag.TypeDef().WithObject("Secret").WithOptional(true), dagger.FunctionWithArgOpts{Description: "GitHub PAT with read access to private Go modules", SourceMap: dag.SourceMap("main.go", 22, 2)}).
+							WithArg("image", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{Description: "Base Go container image (defaults to golang:<version> from go.mod)", SourceMap: dag.SourceMap("main.go", 25, 2)}).
+							WithArg("goprivate", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{Description: "GOPRIVATE glob pattern (e.g. \"github.com/org/*\")", SourceMap: dag.SourceMap("main.go", 28, 2)}))), nil
 	default:
 		return nil, fmt.Errorf("unknown object %s", parentName)
 	}

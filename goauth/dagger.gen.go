@@ -251,8 +251,7 @@ func invoke(ctx context.Context, parentJSON []byte, parentName string, fnName st
 					WithFunction(
 						dag.Function("Base",
 							dag.TypeDef().WithObject("Container")).
-							WithDescription("Base returns a Go toolchain container authenticated for private GitHub modules.").
-							WithSourceMap(dag.SourceMap("main.go", 31, 1))).
+							WithSourceMap(dag.SourceMap("main.go", 28, 1))).
 					WithField("Token", dag.TypeDef().WithObject("Secret"), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 6, 2)}).
 					WithField("Image", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 7, 2)}).
 					WithField("Goprivate", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind), dagger.TypeDefWithFieldOpts{SourceMap: dag.SourceMap("main.go", 8, 2)}).
@@ -260,9 +259,9 @@ func invoke(ctx context.Context, parentJSON []byte, parentName string, fnName st
 						dag.Function("New",
 							dag.TypeDef().WithObject("Goauth")).
 							WithSourceMap(dag.SourceMap("main.go", 11, 1)).
-							WithArg("token", dag.TypeDef().WithObject("Secret"), dagger.FunctionWithArgOpts{Description: "GitHub PAT with read access to private Go modules", SourceMap: dag.SourceMap("main.go", 13, 2)}).
-							WithArg("image", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{Description: "Base Go container image", SourceMap: dag.SourceMap("main.go", 17, 2), DefaultValue: dagger.JSON("\"golang:1.27.3\"")}).
-							WithArg("goprivate", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{Description: "GOPRIVATE glob pattern", SourceMap: dag.SourceMap("main.go", 21, 2), DefaultValue: dagger.JSON("\"github.com/ninesl/*\"")}))), nil
+							WithArg("token", dag.TypeDef().WithObject("Secret").WithOptional(true), dagger.FunctionWithArgOpts{SourceMap: dag.SourceMap("main.go", 13, 2)}).
+							WithArg("image", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{SourceMap: dag.SourceMap("main.go", 16, 2), DefaultValue: dagger.JSON("\"golang:1.27.3\"")}).
+							WithArg("goprivate", dag.TypeDef().WithKind(dagger.TypeDefKindStringKind).WithOptional(true), dagger.FunctionWithArgOpts{SourceMap: dag.SourceMap("main.go", 19, 2), DefaultValue: dagger.JSON("\"github.com/ninesl/*\"")}))), nil
 	default:
 		return nil, fmt.Errorf("unknown object %s", parentName)
 	}

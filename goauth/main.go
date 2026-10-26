@@ -9,13 +9,11 @@ type Goauth struct {
 }
 
 func New(
-	// GitHub PAT with read access to private Go modules
+	// +optional
 	token *dagger.Secret,
-	// Base Go container image
 	// +optional
 	// +default="golang:1.27.3"
 	image string,
-	// GOPRIVATE glob pattern
 	// +optional
 	// +default="github.com/ninesl/*"
 	goprivate string,
@@ -27,16 +25,15 @@ func New(
 	}
 }
 
-// Base returns a Go toolchain container authenticated for private GitHub modules.
 func (m *Goauth) Base() *dagger.Container {
+	ctr := dag.Container().From(m.Image).WithEnvVariable("GOPRIVATE", m.Goprivate)
+	if m.Token == nil {
+		return ctr
+	}
 	askpass := "#!/bin/sh\ncase \"$1\" in\n  *Username*) echo x-access-token ;;\n  *) echo \"$GITHUB_TOKEN\" ;;\nesac\n"
-	return dag.Container().
-		From(m.Image).
+	return ctr.
 		WithSecretVariable("GITHUB_TOKEN", m.Token).
-		WithNewFile("/usr/local/bin/git-askpass", askpass, dagger.ContainerWithNewFileOpts{
-			Permissions: 0o755,
-		}).
+		WithNewFile("/usr/local/bin/git-askpass", askpass, dagger.ContainerWithNewFileOpts{Permissions: 0o755}).
 		WithEnvVariable("GIT_ASKPASS", "/usr/local/bin/git-askpass").
-		WithEnvVariable("GIT_TERMINAL_PROMPT", "0").
-		WithEnvVariable("GOPRIVATE", m.Goprivate)
+		WithEnvVariable("GIT_TERMINAL_PROMPT", "0")
 }

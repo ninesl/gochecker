@@ -9,7 +9,7 @@ import (
 	"github.com/dagger/querybuilder"
 )
 
-type Goauth struct { // goauth (../../../../../../:0:0)
+type Goauth struct { // goauth (../../../../:0:0)
 	query *querybuilder.Selection
 	// refetchID is set when this object is built through a field marked
 	// @reevaluate: it fetches its ID on every use, so each use evaluates that
@@ -30,7 +30,6 @@ func (r *Goauth) WithGraphQLQuery(q *querybuilder.Selection) *Goauth {
 	}
 }
 
-// Base returns a Go toolchain container authenticated for private GitHub modules.
 func (r *Goauth) Base() *Container {
 	q := r.query.Select("base")
 
@@ -130,20 +129,22 @@ func (r *Goauth) Token() *Secret {
 
 // GoauthOpts contains options for Query.Goauth
 type GoauthOpts struct {
-	// Base Go container image
-	//
+	Token *Secret
+
 	// Default: "golang:1.27.3"
 	Image string
-	// GOPRIVATE glob pattern
-	//
+
 	// Default: "github.com/ninesl/*"
 	Goprivate string
 }
 
-func (r *Query) Goauth(token *Secret, opts ...GoauthOpts) *Goauth { // goauth (../../../../../../:0:0)
-	assertNotNil("token", token)
+func (r *Query) Goauth(opts ...GoauthOpts) *Goauth { // goauth (../../../../:0:0)
 	q := r.query.Select("goauth")
 	for i := len(opts) - 1; i >= 0; i-- {
+		// `token` optional argument
+		if !querybuilder.IsZeroValue(opts[i].Token) {
+			q = q.Arg("token", opts[i].Token)
+		}
 		// `image` optional argument
 		if !querybuilder.IsZeroValue(opts[i].Image) {
 			q = q.Arg("image", opts[i].Image)
@@ -153,7 +154,6 @@ func (r *Query) Goauth(token *Secret, opts ...GoauthOpts) *Goauth { // goauth (.
 			q = q.Arg("goprivate", opts[i].Goprivate)
 		}
 	}
-	q = q.Arg("token", token)
 
 	return &Goauth{
 		query:     q,
